@@ -1,10 +1,10 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable } from '@nestjs/common';
-import { Users } from '../auth/users.entity';
+import { Users } from '../auth/user.entity';
 
 @Injectable()
 export class MailService {
-  constructor(private mailerService: MailerService) {}
+  constructor(private mailerService: MailerService) { }
 
   async sendResetPasswordEmail(user: Users, jwtTokwn: string) {
     const url = `${process.env.APP_URL}/forget-password/${jwtTokwn}`;

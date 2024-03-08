@@ -1,12 +1,12 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { Users } from './users.entity';
+import { Users } from './user.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthMiddleware } from 'src/middlewares/auth.middleware';
 // import { MailgunService } from 'src/mail/mail.service';
 import { MailModule } from '../mail/mail.module';
-import { UserSheets } from 'src/userSheets/userSheets.entity';
+import { UserSheets } from 'src/uploads/uploads.entity';
 import express from 'express';
 
 @Module({

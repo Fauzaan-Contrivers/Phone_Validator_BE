@@ -4,17 +4,10 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/database.config';
-import { SheetsModule } from './sheets/sheets.module';
-import { Users } from './auth/users.entity';
-import { Sheets } from './sheets/sheets.entity';
+import { SheetsModule } from './phonebook/phonebook.module';
 
 @Module({
-  imports: [
-    AuthModule,
-    SheetsModule,
-    TypeOrmModule.forRoot(databaseConfig),
-    // TypeOrmModule.forFeature([Users, Sheets])
-  ],
+  imports: [AuthModule, SheetsModule, TypeOrmModule.forRoot(databaseConfig)],
   controllers: [AppController],
   providers: [AppService],
 })

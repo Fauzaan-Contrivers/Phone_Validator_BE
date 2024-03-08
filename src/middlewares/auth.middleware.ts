@@ -2,8 +2,8 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { Users } from 'src/auth/users.entity';
-import { Sheets } from 'src/sheets/sheets.entity';
+import { Users } from 'src/auth/user.entity';
+import { Sheets } from 'src/phonebook/phonebook.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class AuthMiddleware implements NestMiddleware {
     // @InjectRepository(Users)
     // private readonly userRepository: Repository<Users>,
     // @InjectRepository(Sheets)
-    // private readonly sheetsRepository: Repository<Sheets>,
+    // private readonly phonebookRepository: Repository<Sheets>,
   ) { }
   use(req: Request, res: Response, next: NextFunction): void {
     const token = req.headers.authorization?.split(' ')[1];

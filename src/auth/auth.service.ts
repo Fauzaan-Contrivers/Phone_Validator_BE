@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { Users } from './users.entity';
+import { Users } from './user.entity';
 import { Repository } from 'typeorm';
 import * as jwt from 'jsonwebtoken';
-import { UserSheets } from 'src/userSheets/userSheets.entity';
+import { UserSheets } from 'src/uploads/uploads.entity';
 import path from 'path';
 import * as fs from 'fs';
 import { MailService } from 'src/mail/mail.service';
@@ -16,9 +16,9 @@ export class AuthService {
     @InjectRepository(Users)
     private readonly userRepository: Repository<Users>,
     @InjectRepository(UserSheets)
-    private readonly sheetsRepository: Repository<UserSheets>,
+    private readonly phonebookRepository: Repository<UserSheets>,
     private mailService: MailService,
-  ) {}
+  ) { }
 
   async loginUser(email: string, password: string): Promise<any> {
     try {
@@ -203,7 +203,7 @@ export class AuthService {
           message: 'User with this id not found.',
         };
       }
-      const sheets = await this.sheetsRepository.find({
+      const sheets = await this.phonebookRepository.find({
         relations: ['user'],
         where: {
           user: { id: id },

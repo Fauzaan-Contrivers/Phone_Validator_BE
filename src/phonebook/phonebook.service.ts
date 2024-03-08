@@ -1,44 +1,44 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Sheets } from './sheets.entity';
 import { Repository } from 'typeorm';
 import { Readable } from 'stream';
 import csvParser from 'csv-parser';
-import { Users } from 'src/auth/users.entity';
-import { UserSheets } from 'src/userSheets/userSheets.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as csvWriter from 'csv-writer';
+import { Phonebook } from './phonebook.entity';
+import { User } from 'src/auth/user.entity';
+import { Uploads } from 'src/uploads/uploads.entity';
 
 @Injectable()
-export class SheetsService {
+export class PhonebookService {
   phoneColumns = new Set([
-    'Phone number',
+    'phone number',
     'phone_number',
-    'Phone',
-    'Number',
-    'Telephone',
-    'Mobile',
-    'Mobile number',
-    'Cell',
-    'Cell Phone',
+    'phone',
+    'number',
+    'telephone',
+    'mobile',
+    'mobile number',
+    'cell',
+    'cell phone',
   ]);
 
   constructor(
-    @InjectRepository(Sheets)
-    private readonly sheetsRepository: Repository<Sheets>,
-    @InjectRepository(Users)
-    private readonly userRepository: Repository<Users>,
-    @InjectRepository(UserSheets)
-    private readonly userSheetsRepository: Repository<UserSheets>,
-  ) { }
+    @InjectRepository(Phonebook)
+    private readonly phonebookRepository: Repository<Phonebook>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Uploads)
+    private readonly uploadsRepository: Repository<Uploads>,
+  ) {}
 
   private async getUser(id: number) {
     return await this.userRepository.findOne({ where: { id } });
   }
 
   private async insertPhoneNumbers(phoneNumbers) {
-    return await this.sheetsRepository.insert(phoneNumbers);
+    return await this.phonebookRepository.insert(phoneNumbers);
   }
 
   private async processCSVFile(bufferStream, user) {
@@ -55,7 +55,7 @@ export class SheetsService {
       bufferStream
         .on('end', async () => {
           try {
-            const existingNumbers = await this.sheetsRepository.find();
+            const existingNumbers = await this.phonebookRepository.find();
             const uniquePhoneNumbers = results.filter((newEntry) => {
               return !existingNumbers.some(
                 (existingEntry) => existingEntry.phone === newEntry.phone,
@@ -162,18 +162,18 @@ export class SheetsService {
       if (!user) {
         return { error: true, message: 'Invalid User Id.' };
       }
-      const newUserSheet = await this.userSheetsRepository.create({
+      const newUserSheet = await this.uploadsRepository.create({
         fileName: file.filename,
         fileType: 'original',
         user: { id: user.id },
         originalName: file.originalname,
         cleanedName: `cleaned_${file.filename}`,
       });
-      await this.userSheetsRepository.save(newUserSheet);
+      await this.uploadsRepository.save(newUserSheet);
       if (!newUserSheet) {
         return { error: true, message: 'Something went wrong.' };
       }
-      const adminRecords = await this.sheetsRepository.find();
+      const adminRecords = await this.phonebookRepository.find();
       const inputFilePath = path.join(
         __dirname,
         '../../uploadedFiles',
