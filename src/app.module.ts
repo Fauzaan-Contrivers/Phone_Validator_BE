@@ -10,12 +10,10 @@ import { Sheets } from './sheets/sheets.entity';
 
 @Module({
   imports: [
-    AuthModule, 
+    AuthModule,
     SheetsModule,
     TypeOrmModule.forRoot(databaseConfig),
-   // TypeOrmModule.forFeature([Users, Sheets])
-
-
+    // TypeOrmModule.forFeature([Users, Sheets])
   ],
   controllers: [AppController],
   providers: [AppService],
