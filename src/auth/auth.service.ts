@@ -214,6 +214,7 @@ export class AuthService {
       return { error: true, message: error?.message };
     }
   }
+
   async GetAllUsers(role: string) {
     try {
       const users = await this.userRepository.find();
