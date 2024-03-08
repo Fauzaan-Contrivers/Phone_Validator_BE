@@ -14,6 +14,7 @@ import * as csvWriter from 'csv-writer';
 export class SheetsService {
   phoneColumns = [
     'Phone number',
+    'phone_number',
     'Phone',
     'Number',
     'Telephone',
