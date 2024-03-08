@@ -13,7 +13,7 @@ export const databaseConfig: TypeOrmModuleOptions = {
   username: DB_USERNAME,
   password: DB_PASSWORD,
   database: DB_DATABASE,
-  connectTimeout: 28800,
+  connectTimeout: 288000,
   entities: [Users, Sheets, UserSheets],
   logging: false,
   synchronize: true,
