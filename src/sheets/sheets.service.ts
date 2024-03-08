@@ -66,7 +66,6 @@ export class SheetsService {
           .on('data', (row) => {
             // Extract phone number using regular expression or library
             for (const key in row) {
-              // Check if the current key is 'Phone number'
               if (
                 this.phoneColumns.some(
                   (column) => column.toLowerCase() === key.toLowerCase(),
@@ -79,16 +78,17 @@ export class SheetsService {
             }
           })
           .on('end', async () => {
-            const phoneNumbers = results.map((phoneNumber) => ({
-              phone: phoneNumber,
-              user: user,
-            })); // Prepare data
-            const existingNumbers = await this.sheetsRepository.find();
-            const uniquePhoneNumbers = phoneNumbers.filter((newEntry) => {
-              return !existingNumbers.some(
-                (existingEntry) => existingEntry.phone === newEntry.phone,
-              );
-            });
+            const existingNumbers = new Set(
+              (await this.sheetsRepository.find()).map((entry) => entry.phone),
+            );
+            const uniquePhoneNumbers = [];
+
+            for (const phoneNumber of results) {
+              if (!existingNumbers.has(phoneNumber)) {
+                uniquePhoneNumbers.push({ phone: phoneNumber, user });
+                existingNumbers.add(phoneNumber);
+              }
+            }
             try {
               if (uniquePhoneNumbers.length > 0) {
                 await this.sheetsRepository.insert(uniquePhoneNumbers);
