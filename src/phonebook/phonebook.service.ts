@@ -41,6 +41,18 @@ export class PhonebookService {
     return await this.phonebookRepository.insert(phoneNumbers);
   }
 
+  private async isFileExtensionValid(filename: string) {
+    const nameParts = filename.split('.');
+    if (
+      nameParts &&
+      nameParts.length > 0 &&
+      nameParts[1].toString().toLocaleLowerCase() === 'csv'
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   private async processCSVFile(bufferStream, user) {
     const results = [];
     bufferStream.pipe(csvParser()).on('data', (row) => {

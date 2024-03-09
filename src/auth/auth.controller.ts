@@ -1,82 +1,72 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-  Req,
-  Res,
-  Logger,
-  Put,
-  Body,
-  Param,
-  UseInterceptors,
-  UploadedFile,
-  Post,
-} from '@nestjs/common';
+import { Controller, Get, Req, Res, Body, Param, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
-import path from 'path';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly userService: AuthService) {}
 
   @Post('login')
-  async loginUser(
+  async login(
     @Body('email') email: string,
     @Body('password') password: string,
   ): Promise<string | { message: string }> {
-    console.log('password :>> ', password);
-    return await this.userService.loginUser(email, password);
+    return await this.userService.login(email, password);
   }
 
-  @Get('create-admin')
-  async CreateAdmin(): Promise<string | { message: string }> {
+  @Post('createAdmin')
+  async createAdmin(): Promise<string | { message: string }> {
     return await this.userService.createAdminUser();
   }
-  @Post('forget-password/send-email')
-  async sendEmail(
+
+  @Post('forgetPassword')
+  async sendPasswordResetEmail(
     @Body('email') email: string,
   ): Promise<string | { message: string }> {
-    return await this.userService.sendEmail(email);
+    return await this.userService.sendPasswordResetEmail(email);
   }
-  @Post('change-password')
+
+  @Post('changePassword')
   async changePassword(
     @Body('id') id: string,
     @Body('password') password: string,
   ): Promise<string | { message: string }> {
     return await this.userService.changePassword(id, password);
   }
-  @Post('create-sub-admin')
-  async createSubAdmin(
+
+  @Post('createUser')
+  async createUser(
     @Body('email') email: string,
     @Body('name') name: string,
     @Req() request: Request,
   ): Promise<string | { message: string }> {
     const role = request['role'];
-    return await this.userService.createSubAdmin(email, name, role);
+    return await this.userService.createUser(email, name, role);
   }
+
   @Get('all-sheets/:id')
-  async GetAllSheets(
+  async getAllSheets(
     @Req() request: Request,
     @Param('id') id: number,
   ): Promise<string | { message: string }> {
     const role = request['role'];
-    return await this.userService.GetAllSheets(role, id);
+    return await this.userService.getAllSheets(role, id);
   }
+
   @Get('/download/:name')
   async downloadCsv(
     @Param('name') name: string,
     @Res() res: Response,
   ): Promise<string | { message: string }> {
     const cleanedName = name.replace(/^:/, '');
-    // console.log('cleanedName :>> ', cleanedName);
     return await this.userService.downloadCsv(cleanedName, res);
   }
+
   @Get('all-users')
-  async GetAllUsers(
+  async getAllUsers(
     @Req() request: Request,
   ): Promise<string | { message: string }> {
     const role = request['role'];
-    return await this.userService.GetAllUsers(role);
+    return await this.userService.getAllUsers(role);
   }
 }
