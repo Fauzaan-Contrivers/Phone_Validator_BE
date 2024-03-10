@@ -13,7 +13,27 @@ import { extname } from 'path';
 
 @Controller('sheets')
 export class PhonebookController {
-  constructor(private readonly phonebookService: PhonebookService) { }
+  constructor(private readonly phonebookService: PhonebookService) {}
+
+  @Post('upload/:id')
+  @UseInterceptors(FileInterceptor('file'))
+  async ImportCSV(@Param('id') id: number, @UploadedFile() file: Multer.File) {
+    try {
+      const fileInfo = {
+        filename: '',
+        createdBy: '',
+      };
+      await this.phonebookService.saveAdminFileInfo(fileInfo);
+      const resp = await this.phonebookService.importCSV(file);
+      return resp;
+    } catch (error) {
+      console.error('An error occured while importing csv file:', error);
+      return {
+        error: true,
+        message: 'An error occured while importing csv file',
+      };
+    }
+  }
 
   @Post('upload/:id')
   @UseInterceptors(FileInterceptor('image'))

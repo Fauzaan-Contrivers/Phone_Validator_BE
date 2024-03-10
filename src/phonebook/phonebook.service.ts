@@ -41,6 +41,55 @@ export class PhonebookService {
     return await this.phonebookRepository.insert(phoneNumbers);
   }
 
+  async saveAdminFileInfo(fileInfo) {
+    return await this.uploadsRepository.insert(fileInfo);
+  }
+
+  async importCSV(filePath: string): Promise<void> {
+    const uniquePhones: Set<string> = new Set();
+
+    // Read CSV file and extract unique phone numbers
+    await new Promise<void>((resolve, reject) => {
+      fs.createReadStream(filePath)
+        .pipe(csvParser())
+        .on('data', (row) => {
+          const phoneNumber: string = row.phone.trim();
+          if (phoneNumber) {
+            uniquePhones.add(phoneNumber);
+          }
+        })
+        .on('end', () => {
+          resolve();
+        })
+        .on('error', (error) => {
+          reject(error);
+        });
+    });
+
+    // Filter out existing phone numbers from uniquePhones set
+    const existingPhoneNumbers = await this.phonebookRepository.find({
+      select: ['phoneNumber'],
+    });
+    existingPhoneNumbers.forEach((entry) =>
+      uniquePhones.delete(entry.phoneNumber),
+    );
+
+    // Convert unique phone numbers to array of objects for bulk insertion
+    const phoneEntries = Array.from(uniquePhones).map((phoneNumber) => ({
+      phoneNumber,
+    }));
+
+    // Insert unique phone numbers into the database
+    if (phoneEntries.length > 0) {
+      await this.phonebookRepository
+        .createQueryBuilder()
+        .insert()
+        .into(Phonebook)
+        .values(phoneEntries)
+        .execute();
+    }
+  }
+
   private async isFileExtensionValid(filename: string) {
     const nameParts = filename.split('.');
     if (
