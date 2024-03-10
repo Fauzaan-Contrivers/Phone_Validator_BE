@@ -4,26 +4,26 @@ import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly userService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   async login(
     @Body('email') email: string,
     @Body('password') password: string,
   ): Promise<string | { message: string }> {
-    return await this.userService.login(email, password);
+    return await this.authService.login(email, password);
   }
 
   @Post('createAdmin')
   async createAdmin(): Promise<string | { message: string }> {
-    return await this.userService.createAdminUser();
+    return await this.authService.createAdminUser();
   }
 
   @Post('forgetPassword')
   async sendPasswordResetEmail(
     @Body('email') email: string,
   ): Promise<string | { message: string }> {
-    return await this.userService.sendPasswordResetEmail(email);
+    return await this.authService.sendPasswordResetEmail(email);
   }
 
   @Post('changePassword')
@@ -31,7 +31,7 @@ export class AuthController {
     @Body('id') id: string,
     @Body('password') password: string,
   ): Promise<string | { message: string }> {
-    return await this.userService.changePassword(id, password);
+    return await this.authService.changePassword(id, password);
   }
 
   @Post('createUser')
@@ -41,7 +41,7 @@ export class AuthController {
     @Req() request: Request,
   ): Promise<string | { message: string }> {
     const role = request['role'];
-    return await this.userService.createUser(email, name, role);
+    return await this.authService.createUser(email, name, role);
   }
 
   @Get('all-sheets/:id')
@@ -50,7 +50,7 @@ export class AuthController {
     @Param('id') id: number,
   ): Promise<string | { message: string }> {
     const role = request['role'];
-    return await this.userService.getAllSheets(role, id);
+    return await this.authService.GetAllSheets(role, id);
   }
 
   @Get('/download/:name')
@@ -59,7 +59,7 @@ export class AuthController {
     @Res() res: Response,
   ): Promise<string | { message: string }> {
     const cleanedName = name.replace(/^:/, '');
-    return await this.userService.downloadCsv(cleanedName, res);
+    return await this.authService.downloadCsv(cleanedName, res);
   }
 
   @Get('all-users')
@@ -67,6 +67,6 @@ export class AuthController {
     @Req() request: Request,
   ): Promise<string | { message: string }> {
     const role = request['role'];
-    return await this.userService.getAllUsers(role);
+    return await this.authService.GetAllUsers(role);
   }
 }

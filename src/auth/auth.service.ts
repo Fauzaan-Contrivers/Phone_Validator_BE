@@ -181,7 +181,7 @@ export class AuthService {
         });
 
         await this.userRepository.save(user);
-        await this.sendEmail(email);
+        await this.sendPasswordResetEmail(email);
         return { error: false, message: 'User created' };
       } else {
         return {
@@ -206,7 +206,7 @@ export class AuthService {
       const sheets = await this.phonebookRepository.find({
         relations: ['user'],
         where: {
-          user: { id: id },
+          createdBy: id,
         },
       });
       return { error: false, sheets, message: 'sheets fetched.' };

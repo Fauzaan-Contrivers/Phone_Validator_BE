@@ -70,7 +70,8 @@ export class PhonebookService {
             const existingNumbers = await this.phonebookRepository.find();
             const uniquePhoneNumbers = results.filter((newEntry) => {
               return !existingNumbers.some(
-                (existingEntry) => existingEntry.phone === newEntry.phone,
+                (existingEntry) =>
+                  existingEntry.phoneNumber === newEntry.phoneNumber,
               );
             });
             if (uniquePhoneNumbers.length > 0) {
@@ -174,13 +175,14 @@ export class PhonebookService {
       if (!user) {
         return { error: true, message: 'Invalid User Id.' };
       }
-      const newUserSheet = await this.uploadsRepository.create({
+      const fileObj = {
         fileName: file.filename,
         fileType: 'original',
-        user: { id: user.id },
+        createdBy: user.id,
         originalName: file.originalname,
         cleanedName: `cleaned_${file.filename}`,
-      });
+      };
+      const newUserSheet = await this.uploadsRepository.create(fileObj);
       await this.uploadsRepository.save(newUserSheet);
       if (!newUserSheet) {
         return { error: true, message: 'Something went wrong.' };

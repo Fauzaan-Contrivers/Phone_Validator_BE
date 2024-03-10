@@ -4,7 +4,8 @@ import { User } from 'src/auth/user.entity';
 import { Phonebook } from 'src/phonebook/phonebook.entity';
 import { Uploads } from 'src/uploads/uploads.entity';
 dotenv.config();
-const { DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE } = process.env;
+const { DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DATABASE_NAME } =
+  process.env;
 
 export const databaseConfig: TypeOrmModuleOptions = {
   type: 'mysql',
@@ -12,7 +13,7 @@ export const databaseConfig: TypeOrmModuleOptions = {
   port: parseInt(DB_PORT),
   username: DB_USERNAME,
   password: DB_PASSWORD,
-  database: DB_DATABASE,
+  database: DATABASE_NAME,
   connectTimeout: 288000,
   entities: [User, Phonebook, Uploads],
   logging: false,
