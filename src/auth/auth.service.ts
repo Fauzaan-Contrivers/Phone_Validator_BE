@@ -18,7 +18,7 @@ export class AuthService {
     @InjectRepository(Uploads)
     private readonly phonebookRepository: Repository<Uploads>,
     private mailService: MailService,
-  ) { }
+  ) {}
 
   async login(email: string, password: string): Promise<any> {
     try {
@@ -205,7 +205,9 @@ export class AuthService {
       }
       const sheets = await this.phonebookRepository.find({
         relations: ['createdBy'],
-
+        where: {
+          createdBy: { id },
+        },
       });
       return { error: false, sheets, message: 'sheets fetched.' };
     } catch (error) {
