@@ -22,9 +22,6 @@ export class PhonebookService {
     'mobile number',
     'cell',
     'cell phone',
-    'Phone',
-    'Phone Number',
-    'Number'
   ]);
 
   constructor(
@@ -66,7 +63,6 @@ export class PhonebookService {
       batch.forEach((row) => {
         const phoneNumberProperty = phoneProperties.find(property => row?.[property]?.trim());
         const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
-        console.log(phoneNumberProperty)
         if (phoneNumber && !uniquePhones.has(phoneNumber)) {
           uniquePhones.add(phoneNumber.trim());
         }
@@ -179,9 +175,10 @@ export class PhonebookService {
   private async processCSVFileForUser(
     inputFilePath,
     outputFilePath,
-    adminRecords,
+    flaggedFilePath,
   ) {
     if (fs.existsSync(inputFilePath)) {
+      let phoneNumberColumnFromCSV = ""
       const rows = [];
       const stream = fs
         .createReadStream(inputFilePath)
@@ -193,6 +190,7 @@ export class PhonebookService {
             ),
           );
           if (phoneNumberColumn) {
+            phoneNumberColumnFromCSV = phoneNumberColumn
             const phoneNumber = row[phoneNumberColumn];
 
             // const isHighlighted = adminRecords.some(
@@ -218,7 +216,7 @@ export class PhonebookService {
               )
             `);
             const values = rows
-              .map(entry => `('${entry.Phone}')`)
+              .map(entry => `('${entry[phoneNumberColumnFromCSV]}')`)
               .join(',');
             await this.connection.query(`
             INSERT INTO ${tableName} (\`phoneNumber\`)
@@ -232,8 +230,16 @@ export class PhonebookService {
       LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
       WHERE main.phoneNumber IS NULL
     `;
-
+            const flaggedNumbersQuery = `
+      SELECT temp.phoneNumber
+      FROM ${tableName} temp
+      LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
+      WHERE main.phoneNumber IS NOT NULL
+    `;
             const results = await this.connection.query(query);
+            const flaggedNumbers = await this.connection.query(flaggedNumbersQuery);
+
+
             const csvWriterStream = csvWriter.createObjectCsvWriter({
               path: outputFilePath,
               header: Object.keys(rows[0]).map((header) => ({
@@ -242,9 +248,22 @@ export class PhonebookService {
               })),
             });
 
-            const updatedData = results.map(item => ({ Phone: item.phoneNumber }));
+            const csvWriterStream2 = csvWriter.createObjectCsvWriter({
+              path: flaggedFilePath,
+              header: Object.keys(rows[0]).map((header) => ({
+                id: header,
+                title: header,
+              })),
+            });
+
+
+            const updatedData = results.map(item => ({ [phoneNumberColumnFromCSV]: item.phoneNumber }));
+            const flaggedNumbersArray = flaggedNumbers.map(item => ({ [phoneNumberColumnFromCSV]: item.phoneNumber }));
+            //  const phoneNumbersString = flaggedNumbersArray.join(', '); // You can specify a separator if needed
+
 
             await csvWriterStream.writeRecords(updatedData);
+            await csvWriterStream2.writeRecords(flaggedNumbersArray);
 
             console.log('CSV writing completed.');
           } else {
@@ -297,7 +316,7 @@ export class PhonebookService {
       const fileObj = {
         fileName: file.filename,
         fileType: 'original',
-
+        flaggedFileName: `flagged_${file.filename}`,
         createdBy: { id: user.id },
         originalName: file.originalname,
         cleanFileName: `cleaned_${file.filename}`,
@@ -324,10 +343,17 @@ export class PhonebookService {
         '../../uploadedFiles',
         `cleaned_${file.filename}`,
       );
+
+      const flaggedFilePath = path.join(
+        __dirname,
+        '../../uploadedFiles',
+        `flagged_${file.filename}`,
+      );
+
       await this.processCSVFileForUser(
         inputFilePath,
         outputFilePath,
-        adminRecords,
+        flaggedFilePath,
       );
       return { error: false, message: 'Sheet uploaded.' };
     } catch (error) {
