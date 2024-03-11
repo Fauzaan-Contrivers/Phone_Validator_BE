@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { Users } from './users.entity';
+import { User } from './user.entity';
 import { Repository } from 'typeorm';
 import * as jwt from 'jsonwebtoken';
-import { UserSheets } from 'src/userSheets/userSheets.entity';
+import { Uploads } from 'src/uploads/uploads.entity';
 import path from 'path';
 import * as fs from 'fs';
 import { MailService } from 'src/mail/mail.service';
@@ -13,27 +13,27 @@ import { MailService } from 'src/mail/mail.service';
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(Users)
-    private readonly userRepository: Repository<Users>,
-    @InjectRepository(UserSheets)
-    private readonly sheetsRepository: Repository<UserSheets>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Uploads)
+    private readonly phonebookRepository: Repository<Uploads>,
     private mailService: MailService,
   ) {}
 
-  async loginUser(email: string, password: string): Promise<any> {
+  async login(email: string, password: string): Promise<any> {
     try {
       const user = await this.userRepository.findOne({ where: { email } });
       if (!user) {
         return {
           error: true,
-          message: 'User with this email not found.',
+          message: 'User not found',
         };
       }
       const passwordMatch = await bcrypt.compare(password, user.password);
       if (!passwordMatch) {
         return {
           error: true,
-          message: 'Your email or password is incorrect.',
+          message: 'Incorrect password',
         };
       }
 
@@ -46,7 +46,6 @@ export class AuthService {
         role: user.role,
       };
     } catch (e) {
-      console.log('e :>> ', e);
       return {
         error: true,
         messsage: e?.message,
@@ -54,7 +53,7 @@ export class AuthService {
     }
   }
 
-  async sendEmail(email: string) {
+  async sendPasswordResetEmail(email: string) {
     try {
       const user = await this.userRepository.findOne({ where: { email } });
       if (!user) {
@@ -74,7 +73,7 @@ export class AuthService {
         expiresIn: '10m',
       });
 
-      await this.mailService.sendResetPasswordEmail(user, jwtToken);
+      await this.mailService.sendPasswordResetEmail(user, jwtToken);
       return { error: false, message: 'Email sent successfully.' };
     } catch (error) {
       console.error('Error sending email:', error);
@@ -159,30 +158,31 @@ export class AuthService {
     }
   }
 
-  async createSubAdmin(email: string, name: string, role: string) {
+  async createUser(email: string, name: string, role: string) {
     try {
       if (!email || !name) {
         return {
           error: true,
-          message: 'All fields are required.',
+          message: 'All fields are required',
         };
       }
       if (role === 'admin') {
-        const subAdminExists = await this.userRepository.findOne({
+        const userExists = await this.userRepository.findOne({
           where: { email },
         });
-        if (subAdminExists) {
-          return { error: true, message: 'User already exists.' };
+        if (userExists) {
+          return { error: true, message: 'User already exists' };
         }
-        const subAdmin = this.userRepository.create({
+        const user = this.userRepository.create({
           name,
           email,
           password: null,
-          role: 'sub-admin',
+          role: 'user',
         });
-        await this.userRepository.save(subAdmin);
-        await this.sendEmail(email);
-        return { error: false, message: 'Sub admin successfully created.' };
+
+        await this.userRepository.save(user);
+        await this.sendPasswordResetEmail(email);
+        return { error: false, message: 'User created' };
       } else {
         return {
           error: true,
@@ -203,10 +203,10 @@ export class AuthService {
           message: 'User with this id not found.',
         };
       }
-      const sheets = await this.sheetsRepository.find({
+      const sheets = await this.phonebookRepository.find({
         relations: ['user'],
         where: {
-          user: { id: id },
+          createdBy: id,
         },
       });
       return { error: false, sheets, message: 'sheets fetched.' };
