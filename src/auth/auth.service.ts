@@ -206,7 +206,7 @@ export class AuthService {
       const sheets = await this.phonebookRepository.find({
         relations: ['createdBy'],
             where: {
-          createdBy: id,
+          createdBy: {id},
         },
       });
       return { error: false, sheets, message: 'sheets fetched.' };
