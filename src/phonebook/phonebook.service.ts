@@ -22,6 +22,9 @@ export class PhonebookService {
     'mobile number',
     'cell',
     'cell phone',
+    'Phone',
+    'Phone Number',
+    'Number'
   ]);
 
   constructor(
@@ -58,10 +61,13 @@ export class PhonebookService {
       // Extract unique phone numbers from the batch
       let uniquePhones: Set<string> = new Set();
 
+      const phoneProperties = ['Phone number', 'Phone', 'Number', 'Telephone', 'Mobile', 'Mobile number', 'Cell', 'Cell Phone', 'phone_number', 'Phone_Number', 'Phone_number', 'phone number', 'phone', 'number', 'telephone'];
+
       batch.forEach((row) => {
-        const phoneNumber: string = row?.Phone?.trim();
+        const phoneNumberProperty = phoneProperties.find(property => row?.[property]?.trim());
+        const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
         if (phoneNumber && !uniquePhones.has(phoneNumber)) {
-          uniquePhones.add(phoneNumber);
+          uniquePhones.add(phoneNumber.trim());
         }
       });
 
