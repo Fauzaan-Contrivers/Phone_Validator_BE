@@ -1,3 +1,4 @@
+
 import { Uploads } from 'src/uploads/uploads.entity';
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 
@@ -17,6 +18,7 @@ export class User {
 
   @Column({ type: 'varchar', length: 50 })
   role: string;
+
 
   @OneToMany(() => Uploads, sheet => sheet.createdBy)
   sheets: Uploads[];

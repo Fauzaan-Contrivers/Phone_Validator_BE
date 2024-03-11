@@ -25,6 +25,7 @@ export class PhonebookService {
   ]);
 
   constructor(
+
     private readonly connection: Connection,
     @InjectRepository(Phonebook)
     private readonly phonebookRepository: Repository<Phonebook>,
@@ -32,6 +33,7 @@ export class PhonebookService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Uploads)
     private readonly uploadsRepository: Repository<Uploads>,
+
   ) { }
 
   private async getUser(id: number) {
@@ -47,6 +49,7 @@ export class PhonebookService {
   }
 
   async importCSV(filePath: string): Promise<void> {
+
     const batchSize: any = process.env.CSV_PARSING_BATCH_SIZE;
     const readStream = fs.createReadStream(filePath);
     let batch: any[] = [];
@@ -184,18 +187,21 @@ export class PhonebookService {
           );
           if (phoneNumberColumn) {
             const phoneNumber = row[phoneNumberColumn];
+
             // const isHighlighted = adminRecords.some(
             //   (adminRow) => adminRow['phone'] === phoneNumber,
             // );
             //  if (!isHighlighted) {
             rows.push(row);
             // }
+
           } else {
             console.log('No phone number column found.');
           }
         })
         .on('end', async () => {
           if (rows.length > 0) {
+
             const tableName = `temp_table_${Date.now()}`;  // Create a unique table name
             console.log("IO am here")
             await this.connection.query(`
@@ -228,9 +234,11 @@ export class PhonebookService {
                 title: header,
               })),
             });
+
             const updatedData = results.map(item => ({ Phone: item.phoneNumber }));
 
             await csvWriterStream.writeRecords(updatedData);
+
             console.log('CSV writing completed.');
           } else {
             console.log('No matching rows found. Output file not created.');
@@ -282,6 +290,7 @@ export class PhonebookService {
       const fileObj = {
         fileName: file.filename,
         fileType: 'original',
+
         createdBy: { id: user.id },
         originalName: file.originalname,
         cleanFileName: `cleaned_${file.filename}`,
@@ -291,10 +300,12 @@ export class PhonebookService {
       if (!newUserSheet) {
         return { error: true, message: 'Something went wrong.' };
       }
+
       const adminRecords = []
       // const adminRecords = await this.phonebookRepository.find({
       //   take: 10, // Retrieve only the first 10 records
       // });
+
 
       const inputFilePath = path.join(
         __dirname,
