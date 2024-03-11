@@ -61,14 +61,14 @@ export class PhonebookService {
       // Extract unique phone numbers from the batch
       let uniquePhones: Set<string> = new Set();
 
-      const phoneProperties = ['Phone number', 'Phone', 'Number', 'Telephone', 'Mobile', 'Mobile number', 'Cell', 'Cell Phone', 'phone_number', 'Phone_Number', 'Phone_number', 'phone number', 'phone', 'number', 'telephone'];
+      const phoneProperties = ['Phone number', 'Phone Number', 'Phone', 'Number', 'Telephone', 'Mobile', 'Mobile number', 'Cell', 'Cell Phone', 'phone_number', 'Phone_Number', 'Phone_number', 'phone number', 'phone', 'number', 'telephone'];
 
       batch.forEach((row) => {
         const phoneNumberProperty = phoneProperties.find(property => row?.[property]?.trim());
-        const phoneNumber: string = row?.[phoneNumberProperty]?.trim().toLowerCase();
-
+        const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
+        console.log(phoneNumberProperty)
         if (phoneNumber && !uniquePhones.has(phoneNumber)) {
-          uniquePhones.add(phoneNumber.trim().toLowerCase());
+          uniquePhones.add(phoneNumber.trim());
         }
       });
 
