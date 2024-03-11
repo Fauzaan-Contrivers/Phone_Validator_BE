@@ -65,9 +65,10 @@ export class PhonebookService {
 
       batch.forEach((row) => {
         const phoneNumberProperty = phoneProperties.find(property => row?.[property]?.trim());
-        const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
+        const phoneNumber: string = row?.[phoneNumberProperty]?.trim().toLowerCase();
+
         if (phoneNumber && !uniquePhones.has(phoneNumber)) {
-          uniquePhones.add(phoneNumber.trim());
+          uniquePhones.add(phoneNumber.trim().toLowerCase());
         }
       });
 
