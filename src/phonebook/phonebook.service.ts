@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Connection, Repository, getConnection } from 'typeorm';
 import { Readable } from 'stream';
 import csvParser from 'csv-parser';
 import * as fs from 'fs';
@@ -25,13 +25,14 @@ export class PhonebookService {
   ]);
 
   constructor(
+    private readonly connection: Connection,
     @InjectRepository(Phonebook)
     private readonly phonebookRepository: Repository<Phonebook>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Uploads)
     private readonly uploadsRepository: Repository<Uploads>,
-  ) {}
+  ) { }
 
   private async getUser(id: number) {
     return await this.userRepository.findOne({ where: { id } });
@@ -46,49 +47,76 @@ export class PhonebookService {
   }
 
   async importCSV(filePath: string): Promise<void> {
-    const uniquePhones: Set<string> = new Set();
+    const batchSize: any = process.env.CSV_PARSING_BATCH_SIZE;
+    const readStream = fs.createReadStream(filePath);
+    let batch: any[] = [];
 
-    // Read CSV file and extract unique phone numbers
-    await new Promise<void>((resolve, reject) => {
-      fs.createReadStream(filePath)
+    const processBatch = async (batch: any[]) => {
+      // Extract unique phone numbers from the batch
+      let uniquePhones: Set<string> = new Set();
+
+      batch.forEach((row) => {
+        const phoneNumber: string = row?.Phone?.trim();
+        if (phoneNumber && !uniquePhones.has(phoneNumber)) {
+          uniquePhones.add(phoneNumber);
+        }
+      });
+
+      const phoneEntries = Array.from(uniquePhones).map((phoneNumber) => ({
+        phoneNumber,
+      }));
+
+      if (phoneEntries.length > 0) {
+        const values = phoneEntries
+          .map(entry => `('${entry.phoneNumber}')`)
+          .join(',');
+
+        const rawQuery = `
+          INSERT INTO phonebook (\`phoneNumber\`)
+          VALUES ${values}
+          ON DUPLICATE KEY UPDATE \`phoneNumber\` = \`phoneNumber\`
+        `;
+
+        await this.phonebookRepository.query(rawQuery);
+      }
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      readStream
         .pipe(csvParser())
         .on('data', (row) => {
-          const phoneNumber: string = row.phone.trim();
-          if (phoneNumber) {
-            uniquePhones.add(phoneNumber);
+          batch.push(row);
+
+          if (batch.length == batchSize) {
+            processBatch(batch)
+              .then(() => {
+                batch = []; // Clear the batch array
+              })
+              .catch((error) => {
+                reject(error);
+              });
           }
         })
-        .on('end', () => {
-          resolve();
+        .on('end', async () => {
+          try {
+            // Process the remaining rows if any (for the last batch)
+            if (batch.length > 0) {
+              await processBatch(batch);
+            }
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
         })
         .on('error', (error) => {
+          console.log("error", error);
           reject(error);
         });
     });
-
-    // Filter out existing phone numbers from uniquePhones set
-    const existingPhoneNumbers = await this.phonebookRepository.find({
-      select: ['phoneNumber'],
-    });
-    existingPhoneNumbers.forEach((entry) =>
-      uniquePhones.delete(entry.phoneNumber),
-    );
-
-    // Convert unique phone numbers to array of objects for bulk insertion
-    const phoneEntries = Array.from(uniquePhones).map((phoneNumber) => ({
-      phoneNumber,
-    }));
-
-    // Insert unique phone numbers into the database
-    if (phoneEntries.length > 0) {
-      await this.phonebookRepository
-        .createQueryBuilder()
-        .insert()
-        .into(Phonebook)
-        .values(phoneEntries)
-        .execute();
-    }
   }
+
+
+
 
   private async isFileExtensionValid(filename: string) {
     const nameParts = filename.split('.');
@@ -156,18 +184,43 @@ export class PhonebookService {
           );
           if (phoneNumberColumn) {
             const phoneNumber = row[phoneNumberColumn];
-            const isHighlighted = adminRecords.some(
-              (adminRow) => adminRow['phone'] === phoneNumber,
-            );
-            if (!isHighlighted) {
-              rows.push(row);
-            }
+            // const isHighlighted = adminRecords.some(
+            //   (adminRow) => adminRow['phone'] === phoneNumber,
+            // );
+            //  if (!isHighlighted) {
+            rows.push(row);
+            // }
           } else {
             console.log('No phone number column found.');
           }
         })
         .on('end', async () => {
           if (rows.length > 0) {
+            const tableName = `temp_table_${Date.now()}`;  // Create a unique table name
+            console.log("IO am here")
+            await this.connection.query(`
+              CREATE TABLE ${tableName} (
+                id SERIAL PRIMARY KEY,
+                phoneNumber VARCHAR(255) NOT NULL 
+              )
+            `);
+            const values = rows
+              .map(entry => `('${entry.Phone}')`)
+              .join(',');
+            await this.connection.query(`
+            INSERT INTO ${tableName} (\`phoneNumber\`)
+               VALUES ${values}
+               ON DUPLICATE KEY UPDATE \`phoneNumber\` = \`phoneNumber\`
+               `);
+
+            const query = `
+      SELECT temp.phoneNumber
+      FROM ${tableName} temp
+      LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
+      WHERE main.phoneNumber IS NULL
+    `;
+
+            const results = await this.connection.query(query);
             const csvWriterStream = csvWriter.createObjectCsvWriter({
               path: outputFilePath,
               header: Object.keys(rows[0]).map((header) => ({
@@ -175,7 +228,9 @@ export class PhonebookService {
                 title: header,
               })),
             });
-            await csvWriterStream.writeRecords(rows);
+            const updatedData = results.map(item => ({ Phone: item.phoneNumber }));
+
+            await csvWriterStream.writeRecords(updatedData);
             console.log('CSV writing completed.');
           } else {
             console.log('No matching rows found. Output file not created.');
@@ -227,16 +282,20 @@ export class PhonebookService {
       const fileObj = {
         fileName: file.filename,
         fileType: 'original',
-        createdBy: user.id,
+        createdBy: { id: user.id },
         originalName: file.originalname,
-        cleanedName: `cleaned_${file.filename}`,
+        cleanFileName: `cleaned_${file.filename}`,
       };
       const newUserSheet = await this.uploadsRepository.create(fileObj);
       await this.uploadsRepository.save(newUserSheet);
       if (!newUserSheet) {
         return { error: true, message: 'Something went wrong.' };
       }
-      const adminRecords = await this.phonebookRepository.find();
+      const adminRecords = []
+      // const adminRecords = await this.phonebookRepository.find({
+      //   take: 10, // Retrieve only the first 10 records
+      // });
+
       const inputFilePath = path.join(
         __dirname,
         '../../uploadedFiles',
