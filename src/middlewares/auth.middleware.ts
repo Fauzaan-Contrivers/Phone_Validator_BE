@@ -1,24 +1,15 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { Users } from 'src/auth/users.entity';
-import { Sheets } from 'src/sheets/sheets.entity';
-import { Repository } from 'typeorm';
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  constructor(
-    // @InjectRepository(Users)
-    // private readonly userRepository: Repository<Users>,
-    // @InjectRepository(Sheets)
-    // private readonly sheetsRepository: Repository<Sheets>,
-  ) { }
+  constructor() {}
   use(req: Request, res: Response, next: NextFunction): void {
     const token = req.headers.authorization?.split(' ')[1];
 
     // Check if the current request path matches the dynamic route pattern
-    if (!token && !req.originalUrl.startsWith("/p/")) {
+    if (!token && !req.originalUrl.startsWith('/p/')) {
       res.status(401).json({ authError: true, message: 'No Token Provided' });
       return;
     }
@@ -34,28 +25,10 @@ export class AuthMiddleware implements NestMiddleware {
       } catch (err) {
         res.status(401).json({ error: true, message: 'No Token Provided' });
       }
-    } else if (req.originalUrl.startsWith("/p/")) {
+    } else if (req.originalUrl.startsWith('/p/')) {
       next();
-    }
-    else {
+    } else {
       res.status(401).json({ error: true, message: 'No Token Provided' });
-
     }
   }
-
-  //   async updateLastAccessed(userId: number) {
-  //     try {
-  //       const user = await this.userRepository.findOne({where:{id:userId}});
-  //       if (!user) {
-  //         return { error: true, message: 'User not found.' };
-  //       }
-
-  //       user.last_accessed_at = new Date();
-  //       await this.userRepository.save(user);
-
-  //     } catch (error) {
-  //        console.log("Error updating last access!")
-  //     }
-  //   }
-
 }
