@@ -17,7 +17,7 @@ import { extname } from 'path';
 export class PhonebookController {
   constructor(private readonly phonebookService: PhonebookService) {}
 
-  @Post('upload/:id')
+  @Post('adminUpload/:id')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -77,7 +77,7 @@ export class PhonebookController {
     } catch (error) {}
   }
 
-  @Post('upload-file/:id')
+  @Post('userUpload/:id')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
