@@ -18,7 +18,7 @@ export class AuthService {
     @InjectRepository(Uploads)
     private readonly phonebookRepository: Repository<Uploads>,
     private mailService: MailService,
-  ) {}
+  ) { }
 
   async login(email: string, password: string): Promise<any> {
     try {
@@ -53,7 +53,7 @@ export class AuthService {
     }
   }
 
-  async sendPasswordResetEmail(email: string) {
+  async sendPasswordResetEmail(email: string, subject: string) {
     try {
       const user = await this.userRepository.findOne({ where: { email } });
       if (!user) {
@@ -72,8 +72,7 @@ export class AuthService {
       const jwtToken = jwt.sign(payload, process.env.JWT_SECRET, {
         expiresIn: '10m',
       });
-
-      await this.mailService.sendPasswordResetEmail(user, jwtToken);
+      await this.mailService.sendPasswordResetEmail(user, jwtToken, subject);
       return { error: false, message: 'Email sent successfully.' };
     } catch (error) {
       console.error('Error sending email:', error);
@@ -180,8 +179,9 @@ export class AuthService {
           role: 'user',
         });
 
+        const subject = "Set your new password";
         await this.userRepository.save(user);
-        await this.sendPasswordResetEmail(email);
+        await this.sendPasswordResetEmail(email, subject);
         return { error: false, message: 'User created' };
       } else {
         return {

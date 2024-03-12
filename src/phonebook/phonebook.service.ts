@@ -102,6 +102,7 @@ export class PhonebookService {
           row?.[property]?.trim(),
         );
         const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
+        console.log(phoneNumber)
         if (phoneNumber) {
           if (!uniquePhones.has(phoneNumber)) {
             uniquePhones.add(phoneNumber.trim());
@@ -240,7 +241,6 @@ export class PhonebookService {
         .pipe(csvParser())
         .on('data', (row) => {
           if (isFirst) {
-            console.log(row)
             const phoneNumberColumn = Object.keys(row).find((column) =>
               Array.from(this.phoneColumns).some((phoneColumn) =>
                 column.toLowerCase().includes(phoneColumn.toLowerCase()),
@@ -250,8 +250,6 @@ export class PhonebookService {
             phoneNumberColumnFromCSV = phoneNumberColumn;
 
             otherColumnsArray = Object.keys(row).filter(key => key !== phoneNumberColumnFromCSV);
-            console.log(otherColumnsArray)
-            console.log(phoneNumberColumnFromCSV)
           }
 
           if (phoneNumberColumnFromCSV) {
@@ -274,7 +272,6 @@ export class PhonebookService {
               .map((column) => `${column} VARCHAR(255)`)
               .join(', ') : [];
 
-            console.log(columnDefinitions)
             await this.connection.query(`
             CREATE TABLE ${tableName} (
               id SERIAL PRIMARY KEY,
@@ -283,7 +280,6 @@ export class PhonebookService {
               ${otherColumnsArray.length > 0 ? columnDefinitions : ''}
             )
             `);
-            console.log("work")
             const trimmedOtherColumns = otherColumnsArray.map(column => column.trim());
 
             const values = rows
@@ -292,7 +288,6 @@ export class PhonebookService {
                 const otherColumnValues = otherColumnsArray.length > 0 ? trimmedOtherColumns.map((column) => entry[column]) : [];
 
                 const allColumnValues = [phoneNumberValue, ...otherColumnValues];
-                console.log(allColumnValues)
                 return `('${allColumnValues.join("','")}')`;
               })
               .join(',');
@@ -384,7 +379,6 @@ export class PhonebookService {
             await csvWriterStream.writeRecords(updatedData); //cleaned
             await csvWriterStream2.writeRecords(flaggedNumbersArray); //duplicate
 
-            console.log('CSV writing completed.');
             return newUserSheet;
           } else {
             console.log('No matching rows found. Output file not created.');

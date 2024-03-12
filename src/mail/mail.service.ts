@@ -4,14 +4,14 @@ import { User } from '../auth/user.entity';
 
 @Injectable()
 export class MailService {
-  constructor(private mailerService: MailerService) {}
+  constructor(private mailerService: MailerService) { }
 
-  async sendPasswordResetEmail(user: User, jwtTokwn: string) {
+  async sendPasswordResetEmail(user: User, jwtTokwn: string, subject: string) {
     const url = `${process.env.APP_URL}/forget-password/${jwtTokwn}`;
     await this.mailerService
       .sendMail({
         to: user.email,
-        subject: 'Reset your password',
+        subject: subject,
         template: './invite',
         context: {
           name: user.name,

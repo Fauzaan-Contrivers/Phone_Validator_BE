@@ -13,7 +13,7 @@ import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('login')
   async login(
@@ -32,7 +32,8 @@ export class AuthController {
   async sendPasswordResetEmail(
     @Body('email') email: string,
   ): Promise<string | { message: string }> {
-    return await this.authService.sendPasswordResetEmail(email);
+    const subject = "Reset your password";
+    return await this.authService.sendPasswordResetEmail(email, subject);
   }
 
   @Post('changePassword')
