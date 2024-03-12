@@ -18,7 +18,7 @@ export class AuthService {
     @InjectRepository(Uploads)
     private readonly phonebookRepository: Repository<Uploads>,
     private mailService: MailService,
-  ) { }
+  ) {}
 
   async login(email: string, password: string): Promise<any> {
     try {
@@ -205,8 +205,8 @@ export class AuthService {
       }
       const sheets = await this.phonebookRepository.find({
         relations: ['createdBy'],
-            where: {
-          createdBy: {id},
+        where: {
+          createdBy: { id },
         },
       });
       return { error: false, sheets, message: 'sheets fetched.' };
@@ -243,6 +243,21 @@ export class AuthService {
       }
     } catch (error) {
       return { error: true, message: error?.message };
+    }
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    try {
+      // Find the user to be delete
+      const user = await this.userRepository.findOne({ where: { id } });
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      await this.phonebookRepository.delete({ createdBy: user });
+      await this.userRepository.remove(user);
+    } catch (error) {
+      throw new Error('Failed to delete user and associated phonebook entries');
     }
   }
 }

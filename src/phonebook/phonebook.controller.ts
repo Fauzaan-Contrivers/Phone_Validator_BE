@@ -4,7 +4,6 @@ import {
   Param,
   UploadedFile,
   UseInterceptors,
-
   Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -15,8 +14,7 @@ import { extname } from 'path';
 
 @Controller('sheets')
 export class PhonebookController {
-
-  constructor(private readonly phonebookService: PhonebookService) { }
+  constructor(private readonly phonebookService: PhonebookService) {}
 
   @Post('upload/:id')
   @UseInterceptors(
@@ -33,7 +31,11 @@ export class PhonebookController {
       }),
     }),
   )
-  async ImportCSV(@Param('id') id: number, @UploadedFile() file: Multer.File, @Req() request: Request) {
+  async ImportCSV(
+    @Param('id') id: number,
+    @UploadedFile() file: Multer.File,
+    @Req() request: Request,
+  ) {
     try {
       const fileInfo = {
         fileName: file.filename,
@@ -41,9 +43,9 @@ export class PhonebookController {
         createdBy: request['user_id'],
         originalName: file.originalname,
       };
-      await this.phonebookService.saveAdminFileInfo(fileInfo);
-      const resp = await this.phonebookService.importCSV(file.path);
-      return { error: false, message: "Uploaded" };
+
+      const resp = await this.phonebookService.importCSV(file.path, fileInfo);
+      return { error: false, message: 'Uploaded' };
     } catch (error) {
       console.error('An error occured while importing csv file:', error);
       return {
@@ -52,7 +54,6 @@ export class PhonebookController {
       };
     }
   }
-
 
   // @Post('upload/:id')
   // @UseInterceptors(FileInterceptor('image'))
