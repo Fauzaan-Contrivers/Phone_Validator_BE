@@ -42,16 +42,13 @@ export class PhonebookService {
     return await this.phonebookRepository.insert(phoneNumbers);
   }
 
-  async saveAdminFileInfo(
-    fileInfo: any,
-    totalCount: number,
-    cleaned: number,
-  ): Promise<any> {
-    fileInfo.totalCount = totalCount;
-    fileInfo.cleaned = cleaned;
-    fileInfo.duplicate = totalCount - cleaned;
-
+  async saveAdminFileInfo(fileInfo: any): Promise<any> {
     const upload = await this.uploadsRepository.insert(fileInfo);
+    return upload;
+  }
+
+  async updateAdminFileInfo(fileInfo: any): Promise<any> {
+    const upload = await this.uploadsRepository.save(fileInfo);
     return upload;
   }
 
@@ -163,7 +160,10 @@ export class PhonebookService {
               afterInsertionPhonebook[0]?.total_count,
             );
             let unique = totalPhonebookCount - totalBeforePhonebookCount;
-            await this.saveAdminFileInfo(fileInfo, totalCount, unique);
+            fileInfo.totalCount = totalCount;
+            fileInfo.cleaned = unique;
+            fileInfo.duplicate = totalCount - unique;
+            await this.updateAdminFileInfo(fileInfo);
             resolve();
           } catch (error) {
             reject(error);

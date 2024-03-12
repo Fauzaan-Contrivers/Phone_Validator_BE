@@ -44,7 +44,7 @@ export class PhonebookController {
         createdBy: request['user_id'],
         originalName: file.originalname,
       };
-
+      await this.phonebookService.saveAdminFileInfo(fileInfo);
       const resp = await this.phonebookService.importCSV(file.path, fileInfo);
       return { error: false, message: 'Uploaded' };
     } catch (error) {
