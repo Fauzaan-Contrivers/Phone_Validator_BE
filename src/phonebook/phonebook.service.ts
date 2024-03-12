@@ -40,20 +40,13 @@ export class PhonebookService {
     return await this.phonebookRepository.insert(phoneNumbers);
   }
 
-  async saveAdminFileInfo(
-    fileInfo: any,
-    totalCount: number,
-    cleaned: number,
-  ): Promise<any> {
-    fileInfo.totalCount = totalCount;
-    fileInfo.cleaned = cleaned;
-    fileInfo.duplicate = totalCount - cleaned;
-
+  async saveAdminFileInfo(fileInfo: any): Promise<any> {
     const upload = await this.uploadsRepository.insert(fileInfo);
     return upload;
   }
 
-  async importCSV(filePath: string): Promise<void> {
+  async importCSV(filePath: string, fileInfo: any): Promise<void> {
+    console.log('import CSV Called');
     const batchSize: number = +process.env.CSV_PARSING_BATCH_SIZE || 1000;
     const readStream = fs.createReadStream(filePath);
     let batch: any[] = [];
@@ -65,16 +58,37 @@ export class PhonebookService {
     const totalBeforePhonebookCount = parseInt(
       totalPhonebookResult[0]?.total_count,
     );
+    const columns = [];
+    const stream = fs
+      .createReadStream(filePath)
+      .pipe(csvParser())
+      .on('data', (row) => {
+        if (columns.length === 0) {
+          columns.push(...Object.keys(row));
+        }
+      });
+
+    let phoneNumberColumnFromCSV = '';
+    for (let i = 0; i < columns.length; i++) {
+      const columnName = columns[i];
+      if (this.phoneColumns.includes(columnName.toLowerCase())) {
+        phoneNumberColumnFromCSV = columnName;
+        break;
+      }
+    }
+
+    if (!phoneNumberColumnFromCSV) {
+      console.log('No phone number column found.');
+      return;
+    }
 
     const processBatch = async (batch: any[]) => {
       const uniquePhones = new Set<string>();
 
       batch.forEach((row) => {
-        const phoneNumberProperty = this.phoneColumns.find((property) =>
-          row[property.toLowerCase()]?.trim(),
-        );
-        const phoneNumber: string = row[phoneNumberProperty]?.trim();
+        const phoneNumber: string = row[phoneNumberColumnFromCSV]?.trim();
         if (phoneNumber) {
+          totalCount++;
           uniquePhones.add(phoneNumber);
         }
       });
@@ -124,8 +138,12 @@ export class PhonebookService {
             const totalPhonebookCount = parseInt(
               afterInsertionPhonebook[0]?.total_count,
             );
-            let unique = totalPhonebookCount - totalBeforePhonebookCount;
-            await this.saveAdminFileInfo(fileInfo, totalCount, unique);
+            const unique = totalPhonebookCount - totalBeforePhonebookCount;
+
+            fileInfo.totalCount = totalCount;
+            fileInfo.cleaned = unique;
+            fileInfo.duplicate = totalCount - unique;
+            await this.saveAdminFileInfo(fileInfo);
             resolve();
           } catch (error) {
             reject(error);
@@ -560,6 +578,7 @@ export class PhonebookService {
     inputFilePath: string,
     outputFilePath: string,
     flaggedFilePath: string,
+    fileObj: any,
   ): Promise<void> {
     if (!fs.existsSync(inputFilePath)) {
       console.log('File not found.');

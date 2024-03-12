@@ -253,7 +253,6 @@ export class AuthService {
       if (!user) {
         throw new Error('User not found');
       }
-
       await this.phonebookRepository.delete({ createdBy: user });
       await this.userRepository.remove(user);
     } catch (error) {
