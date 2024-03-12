@@ -1,11 +1,19 @@
-import { Controller, Get, Req, Res, Body, Param, Post } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Req,
+  Res,
+  Body,
+  Param,
+  Post,
+  Delete,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-constructor(private readonly authService: AuthService) { }
-
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   async login(
@@ -69,5 +77,17 @@ constructor(private readonly authService: AuthService) { }
   ): Promise<string | { message: string }> {
     const role = request['role'];
     return await this.authService.GetAllUsers(role);
+  }
+
+  @Delete('user/:id')
+  async deleteUser(
+    @Param('id') id: number,
+  ): Promise<string | { message: string }> {
+    try {
+      await this.authService.deleteUser(id);
+      return { message: 'User deleted successfully' };
+    } catch (error) {
+      return { message: 'Failed to delete user' };
+    }
   }
 }

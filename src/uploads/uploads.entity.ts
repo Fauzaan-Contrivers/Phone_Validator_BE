@@ -1,4 +1,3 @@
-
 import { User } from 'src/auth/user.entity';
 import {
   Entity,
@@ -6,7 +5,6 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
-
   ManyToOne,
 } from 'typeorm';
 
@@ -18,12 +16,20 @@ export class Uploads {
   @Column()
   fileName: string;
 
-
   @Column({ default: null })
   cleanFileName: string;
 
   @Column({ default: null })
   flaggedFileName: string;
+
+  @Column({ default: 0 })
+  totalCount: number;
+
+  @Column({ default: 0 })
+  cleaned: number;
+
+  @Column({ default: 0 })
+  duplicate: number;
 
   @ManyToOne(() => User, (user) => user.id)
   createdBy: User;
