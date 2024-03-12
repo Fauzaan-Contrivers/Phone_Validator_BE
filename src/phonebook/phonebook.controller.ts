@@ -16,7 +16,7 @@ import { extname } from 'path';
 export class PhonebookController {
   constructor(private readonly phonebookService: PhonebookService) {}
 
-  @Post('upload/:id')
+  @Post('adminUpload/:id')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -43,8 +43,8 @@ export class PhonebookController {
         createdBy: request['user_id'],
         originalName: file.originalname,
       };
-
-      const resp = await this.phonebookService.importCSV(file.path, fileInfo);
+      await this.phonebookService.saveAdminFileInfo(fileInfo);
+      const resp = await this.phonebookService.importCSV(file.path);
       return { error: false, message: 'Uploaded' };
     } catch (error) {
       console.error('An error occured while importing csv file:', error);
@@ -55,21 +55,7 @@ export class PhonebookController {
     }
   }
 
-  // @Post('upload/:id')
-  // @UseInterceptors(FileInterceptor('image'))
-  // async updateSheet(
-  //   @Param('id') id: number,
-  //   @UploadedFile() imageFile: Multer.File,
-  // ) {
-  //   try {
-  //     return await this.phonebookService.updateSheet(id, imageFile);
-  //   } catch (error) {
-  //     console.error('Error uploading sheet:', error);
-  //     return { error: true, message: 'Error uploading sheet' };
-  //   }
-  // }
-
-  @Post('upload-file/:id')
+  @Post('userUpload/:id')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
