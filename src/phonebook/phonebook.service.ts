@@ -250,7 +250,7 @@ export class PhonebookService {
             phoneNumberColumnFromCSV = phoneNumberColumn;
 
             otherColumnsArray = Object.keys(row).filter(key => key !== phoneNumberColumnFromCSV);
-
+            console.log(otherColumnsArray)
           }
 
           if (phoneNumberColumnFromCSV) {
@@ -269,39 +269,45 @@ export class PhonebookService {
         .on('end', async () => {
           if (rows.length > 0) {
             const tableName = `temp_table_${Date.now()}`; // Create a unique table name
-            const columnDefinitions = otherColumnsArray
+            const columnDefinitions = otherColumnsArray.length > 0 ? otherColumnsArray
               .map((column) => `${column} VARCHAR(255)`)
-              .join(', ');
+              .join(', ') : [];
             await this.connection.query(`
             CREATE TABLE ${tableName} (
               id SERIAL PRIMARY KEY,
-              phoneNumber VARCHAR(255) NOT NULL,
-              ${columnDefinitions}
+              phoneNumber VARCHAR(255) NOT NULL
+              ${otherColumnsArray.length > 0 ? ',' : ''}
+              ${otherColumnsArray.length > 0 ? columnDefinitions : ''}
             )
             `);
+            console.log("work")
             const trimmedOtherColumns = otherColumnsArray.map(column => column.trim());
 
             const values = rows
               .map((entry) => {
                 const phoneNumberValue = entry[phoneNumberColumnFromCSV]; // Use the correct column name
-                const otherColumnValues = trimmedOtherColumns.map((column) => entry[column]);
+                const otherColumnValues = otherColumnsArray.length > 0 ? trimmedOtherColumns.map((column) => entry[column]) : [];
+
                 const allColumnValues = [phoneNumberValue, ...otherColumnValues];
+                console.log(allColumnValues)
                 return `('${allColumnValues.join("','")}')`;
               })
               .join(',');
 
             await this.connection.query(`
-              INSERT INTO ${tableName} (\`phoneNumber\`, ${trimmedOtherColumns.join(',')})
+              INSERT INTO ${tableName} (\`phoneNumber\` ${otherColumnsArray.length > 0 ? `, ${trimmedOtherColumns.join(',')}` : ''})
               VALUES ${values}
               ON DUPLICATE KEY UPDATE
-                \`phoneNumber\` = VALUES(\`phoneNumber\`),
-                ${trimmedOtherColumns.map((column) => `\`${column}\` = VALUES(\`${column}\`)`).join(',')}
+                \`phoneNumber\` = VALUES(\`phoneNumber\`)
+                ${otherColumnsArray.length > 0 ? ',' : ''}
+
+                ${otherColumnsArray.length > 0 ? trimmedOtherColumns.map((column) => `\`${column}\` = VALUES(\`${column}\`)`).join(',') : ''}
             `);
 
 
 
             const query = `
-             SELECT temp.phoneNumber, temp.${trimmedOtherColumns.join(', temp.')}
+             SELECT temp.phoneNumber  ${otherColumnsArray.length > 0 ? `, temp.${trimmedOtherColumns.join(', temp.')}` : ''}
              FROM ${tableName} temp
             LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
             WHERE main.phoneNumber IS NULL
@@ -309,7 +315,7 @@ export class PhonebookService {
 
 
             const flaggedNumbersQuery = `
-      SELECT temp.phoneNumber, temp.${trimmedOtherColumns.join(', temp.')}
+      SELECT temp.phoneNumber ${otherColumnsArray.length > 0 ? `, temp.${trimmedOtherColumns.join(', temp.')}` : ''}
       FROM ${tableName} temp
       LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
       WHERE main.phoneNumber IS NOT NULL
