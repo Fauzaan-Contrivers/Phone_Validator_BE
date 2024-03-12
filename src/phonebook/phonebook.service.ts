@@ -32,7 +32,7 @@ export class PhonebookService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Uploads)
     private readonly uploadsRepository: Repository<Uploads>,
-  ) {}
+  ) { }
 
   private async getUser(id: number) {
     return await this.userRepository.findOne({ where: { id } });
@@ -232,20 +232,28 @@ export class PhonebookService {
   ) {
     if (fs.existsSync(inputFilePath)) {
       let phoneNumberColumnFromCSV = '';
+      let otherColumnsArray = []
+      let isFirst = true;
       const rows = [];
       const stream = fs
         .createReadStream(inputFilePath)
         .pipe(csvParser())
         .on('data', (row) => {
-          const phoneNumberColumn = Object.keys(row).find((column) =>
-            Array.from(this.phoneColumns).some((phoneColumn) =>
-              column.toLowerCase().includes(phoneColumn.toLowerCase()),
-            ),
-          );
-          if (phoneNumberColumn) {
+          if (isFirst) {
+            console.log(row)
+            const phoneNumberColumn = Object.keys(row).find((column) =>
+              Array.from(this.phoneColumns).some((phoneColumn) =>
+                column.toLowerCase().includes(phoneColumn.toLowerCase()),
+              ),
+            );
+            isFirst = false
             phoneNumberColumnFromCSV = phoneNumberColumn;
-            const phoneNumber = row[phoneNumberColumn];
 
+            otherColumnsArray = Object.keys(row).filter(key => key !== phoneNumberColumnFromCSV);
+
+          }
+
+          if (phoneNumberColumnFromCSV) {
             // const isHighlighted = adminRecords.some(
             //   (adminRow) => adminRow['phone'] === phoneNumber,
             // );
@@ -255,34 +263,53 @@ export class PhonebookService {
           } else {
             console.log('No phone number column found.');
           }
+
+
         })
         .on('end', async () => {
           if (rows.length > 0) {
             const tableName = `temp_table_${Date.now()}`; // Create a unique table name
-            console.log('IO am here');
+            const columnDefinitions = otherColumnsArray
+              .map((column) => `${column} VARCHAR(255)`)
+              .join(', ');
             await this.connection.query(`
-              CREATE TABLE ${tableName} (
-                id SERIAL PRIMARY KEY,
-                phoneNumber VARCHAR(255) NOT NULL 
-              )
+            CREATE TABLE ${tableName} (
+              id SERIAL PRIMARY KEY,
+              phoneNumber VARCHAR(255) NOT NULL,
+              ${columnDefinitions}
+            )
             `);
+            const trimmedOtherColumns = otherColumnsArray.map(column => column.trim());
+
             const values = rows
-              .map((entry) => `('${entry[phoneNumberColumnFromCSV]}')`)
+              .map((entry) => {
+                const phoneNumberValue = entry[phoneNumberColumnFromCSV]; // Use the correct column name
+                const otherColumnValues = trimmedOtherColumns.map((column) => entry[column]);
+                const allColumnValues = [phoneNumberValue, ...otherColumnValues];
+                return `('${allColumnValues.join("','")}')`;
+              })
               .join(',');
+
             await this.connection.query(`
-            INSERT INTO ${tableName} (\`phoneNumber\`)
-               VALUES ${values}
-               ON DUPLICATE KEY UPDATE \`phoneNumber\` = \`phoneNumber\`
-               `);
+              INSERT INTO ${tableName} (\`phoneNumber\`, ${trimmedOtherColumns.join(',')})
+              VALUES ${values}
+              ON DUPLICATE KEY UPDATE
+                \`phoneNumber\` = VALUES(\`phoneNumber\`),
+                ${trimmedOtherColumns.map((column) => `\`${column}\` = VALUES(\`${column}\`)`).join(',')}
+            `);
+
+
 
             const query = `
-      SELECT temp.phoneNumber
-      FROM ${tableName} temp
-      LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
-      WHERE main.phoneNumber IS NULL
-    `;
+             SELECT temp.phoneNumber, temp.${trimmedOtherColumns.join(', temp.')}
+             FROM ${tableName} temp
+            LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
+            WHERE main.phoneNumber IS NULL
+             `;
+
+
             const flaggedNumbersQuery = `
-      SELECT temp.phoneNumber
+      SELECT temp.phoneNumber, temp.${trimmedOtherColumns.join(', temp.')}
       FROM ${tableName} temp
       LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
       WHERE main.phoneNumber IS NOT NULL
@@ -290,7 +317,6 @@ export class PhonebookService {
             const results = await this.connection.query(query);
             const flaggedNumbers =
               await this.connection.query(flaggedNumbersQuery);
-
             const csvWriterStream = csvWriter.createObjectCsvWriter({
               path: outputFilePath,
               header: Object.keys(rows[0]).map((header) => ({
@@ -307,12 +333,32 @@ export class PhonebookService {
               })),
             });
 
-            const updatedData = results.map((item) => ({
-              [phoneNumberColumnFromCSV]: item.phoneNumber,
-            }));
-            const flaggedNumbersArray = flaggedNumbers.map((item) => ({
-              [phoneNumberColumnFromCSV]: item.phoneNumber,
-            }));
+            const updatedData = results.map((item) => {
+              const dataObject = {
+                [phoneNumberColumnFromCSV]: item.phoneNumber,
+              };
+
+              // Include other columns in the dataObject
+              trimmedOtherColumns.forEach((column) => {
+                dataObject[column] = item[column];
+              });
+
+              return dataObject;
+            });
+
+            const flaggedNumbersArray = flaggedNumbers.map((item) => {
+              const dataObject = {
+                [phoneNumberColumnFromCSV]: item.phoneNumber,
+              };
+
+              // Include other columns in the dataObject
+              trimmedOtherColumns.forEach((column) => {
+                dataObject[column] = item[column];
+              });
+
+              return dataObject;
+            });
+
             //  const phoneNumbersString = flaggedNumbersArray.join(', '); // You can specify a separator if needed
 
             fileObj.cleaned = updatedData?.length;
@@ -324,6 +370,7 @@ export class PhonebookService {
             if (!newUserSheet) {
               return { error: true, message: 'Something went wrong.' };
             }
+
 
             await csvWriterStream.writeRecords(updatedData); //cleaned
             await csvWriterStream2.writeRecords(flaggedNumbersArray); //duplicate
@@ -427,3 +474,4 @@ export class PhonebookService {
     }
   }
 }
+
