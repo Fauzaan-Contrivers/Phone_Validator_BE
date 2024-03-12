@@ -15,7 +15,7 @@ import { extname } from 'path';
 
 @Controller('sheets')
 export class PhonebookController {
-  constructor(private readonly phonebookService: PhonebookService) {}
+  constructor(private readonly phonebookService: PhonebookService) { }
 
   @Post('adminUpload/:id')
   @UseInterceptors(
@@ -41,7 +41,7 @@ export class PhonebookController {
       const fileInfo = {
         fileName: file.filename,
         fileType: 'original',
-        createdBy: request['user_id'],
+        createdBy: id,
         originalName: file.originalname,
       };
       await this.phonebookService.saveAdminFileInfo(fileInfo);
@@ -74,7 +74,7 @@ export class PhonebookController {
   async getPhoneCount() {
     try {
       return await this.phonebookService.getPhoneCount();
-    } catch (error) {}
+    } catch (error) { }
   }
 
   @Post('userUpload/:id')
