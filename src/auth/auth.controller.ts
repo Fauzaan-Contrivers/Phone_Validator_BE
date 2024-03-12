@@ -72,11 +72,8 @@ export class AuthController {
   }
 
   @Get('all-users')
-  async getAllUsers(
-    @Req() request: Request,
-  ): Promise<string | { message: string }> {
-    const role = request['role'];
-    return await this.authService.GetAllUsers(role);
+  async getAllUsers(): Promise<string | { message: string }> {
+    return await this.authService.GetAllUsers();
   }
 
   @Delete('user/:id')

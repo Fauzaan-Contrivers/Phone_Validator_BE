@@ -215,7 +215,7 @@ export class AuthService {
     }
   }
 
-  async GetAllUsers(role: string) {
+  async GetAllUsers() {
     try {
       const users = await this.userRepository.find();
       return { error: false, users, message: 'users fetched.' };
