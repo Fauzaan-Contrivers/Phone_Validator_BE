@@ -103,9 +103,9 @@ export class PhonebookService {
         );
         const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
         if (phoneNumber) {
-          totalCount++;
           if (!uniquePhones.has(phoneNumber)) {
             uniquePhones.add(phoneNumber.trim());
+            totalCount++;
           }
         }
       });
@@ -251,6 +251,7 @@ export class PhonebookService {
 
             otherColumnsArray = Object.keys(row).filter(key => key !== phoneNumberColumnFromCSV);
             console.log(otherColumnsArray)
+            console.log(phoneNumberColumnFromCSV)
           }
 
           if (phoneNumberColumnFromCSV) {
@@ -272,6 +273,8 @@ export class PhonebookService {
             const columnDefinitions = otherColumnsArray.length > 0 ? otherColumnsArray
               .map((column) => `${column} VARCHAR(255)`)
               .join(', ') : [];
+
+            console.log(columnDefinitions)
             await this.connection.query(`
             CREATE TABLE ${tableName} (
               id SERIAL PRIMARY KEY,
