@@ -5,6 +5,7 @@ import {
   UploadedFile,
   UseInterceptors,
   Req,
+  Get,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Multer } from 'multer';
@@ -68,6 +69,13 @@ export class PhonebookController {
   //     return { error: true, message: 'Error uploading sheet' };
   //   }
   // }
+
+  @Get('phoneCount')
+  async getPhoneCount() {
+    try {
+      return await this.phonebookService.getPhoneCount();
+    } catch (error) {}
+  }
 
   @Post('upload-file/:id')
   @UseInterceptors(

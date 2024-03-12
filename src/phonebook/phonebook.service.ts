@@ -55,6 +55,15 @@ export class PhonebookService {
     return upload;
   }
 
+  async getPhoneCount() {
+    const totalPhonebookResult = await this.phonebookRepository.query(
+      'SELECT COUNT(*) AS total_count FROM phonebook;',
+    );
+
+    const totalPhonebookCount = parseInt(totalPhonebookResult[0]?.total_count);
+    return totalPhonebookCount;
+  }
+
   async importCSV(filePath: string, fileInfo: any): Promise<void> {
     const batchSize: any = process.env.CSV_PARSING_BATCH_SIZE;
     const readStream = fs.createReadStream(filePath);
@@ -320,6 +329,7 @@ export class PhonebookService {
             await csvWriterStream2.writeRecords(flaggedNumbersArray); //duplicate
 
             console.log('CSV writing completed.');
+            return newUserSheet;
           } else {
             console.log('No matching rows found. Output file not created.');
           }
@@ -403,12 +413,13 @@ export class PhonebookService {
         `flagged_${file.filename}`,
       );
 
-      await this.processCSVFileForUser(
+      const upload = await this.processCSVFileForUser(
         inputFilePath,
         outputFilePath,
         flaggedFilePath,
         fileObj,
       );
+
       return { error: false, message: 'Sheet uploaded.' };
     } catch (error) {
       console.error('Error:', error);
