@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Connection, Repository, getConnection } from 'typeorm';
-import { Readable } from 'stream';
+import { Readable, Stream } from 'stream';
 import csvParser from 'csv-parser';
 import * as fs from 'fs';
+import * as Excel from 'exceljs';
 import * as path from 'path';
 import * as csvWriter from 'csv-writer';
 import { Phonebook } from './phonebook.entity';
@@ -175,6 +176,139 @@ export class PhonebookService {
           reject(error);
         });
     });
+  }
+
+  async importXLSX(filePath: string, fileInfo: any): Promise<void> {
+    const batchSize: any = process.env.CSV_PARSING_BATCH_SIZE;
+
+    let batch: any[] = [];
+    let totalCount = 0;
+    const totalPhonebookResult = await this.phonebookRepository.query(
+      'SELECT COUNT(*) AS total_count FROM phonebook;',
+    );
+
+    const totalBeforePhonebookCount = parseInt(
+      totalPhonebookResult[0]?.total_count,
+    );
+
+    const workbook = new Excel.Workbook();
+    await workbook.xlsx.readFile(filePath);
+
+    const processBatch = async (batch: any[]) => {
+      // Extract unique phone numbers from the batch
+      let uniquePhones: Set<string> = new Set();
+
+      const phoneProperties = [
+        'Phone number',
+        'Phone Number',
+        'Phone',
+        'Number',
+        'Telephone',
+        'Mobile',
+        'Mobile number',
+        'Cell',
+        'Cell Phone',
+        'phone_number',
+        'Phone_Number',
+        'Phone_number',
+        'phone number',
+        'phone',
+        'number',
+        'telephone',
+      ];
+
+      batch.forEach((row) => {
+        console.log({ row });
+        const phoneNumberProperty = phoneProperties.find((property) =>
+          row?.[property]?.trim()
+        );
+        const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
+        console.log(phoneNumber)
+        if (phoneNumber) {
+          if (!uniquePhones.has(phoneNumber)) {
+            uniquePhones.add(phoneNumber.trim());
+            totalCount++;
+          }
+        }
+      });
+
+      const phoneEntries = Array.from(uniquePhones).map((phoneNumber) => ({
+        phoneNumber,
+      }));
+
+      if (phoneEntries.length > 0) {
+        const values = phoneEntries
+          .map((entry) => `('${entry.phoneNumber}')`)
+          .join(',');
+
+        const rawQuery = `
+          INSERT INTO phonebook (\`phoneNumber\`)
+          VALUES ${values}
+          ON DUPLICATE KEY UPDATE \`phoneNumber\` = \`phoneNumber\`
+        `;
+
+        await this.phonebookRepository.query(rawQuery);
+      }
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      workbook.worksheets.forEach(async ws => {
+        const rows = [];
+        for (var i = 1; i <= ws.rowCount; i++) {
+          let row = {}
+          for (var j = 1; j <= ws.columnCount; j++) {
+            var header = await ws.getRow(1).values[j]
+            var value = await ws.getRow(i).values[j];
+            if (value)
+              row[header] = String(value);
+            else row[header] = value;
+          }
+
+          rows[i] = row;
+        }
+
+        for (let i = 0; i < rows.length; i++) {
+
+          const row = rows[i];
+          batch.push(row);
+
+          if (batch.length == batchSize || i === rows.length - 1) {
+            try {
+              await processBatch(batch);
+              batch = []; // Clear the batch array
+            } catch (error) {
+              reject(error);
+            }
+          }
+
+          if (i === rows.length - 1) { // last row/end of file
+            try {
+              const afterInsertionPhonebook =
+                await this.phonebookRepository.query(
+                  'SELECT COUNT(*) AS total_count FROM phonebook;',
+                );
+
+              const totalPhonebookCount = parseInt(
+                afterInsertionPhonebook[0]?.total_count,
+              );
+              let unique = totalPhonebookCount - totalBeforePhonebookCount;
+              fileInfo.totalCount = totalCount;
+              fileInfo.cleaned = unique;
+              fileInfo.duplicate = totalCount - unique;
+              await this.updateAdminFileInfo(fileInfo);
+
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+
+          }
+        }
+
+      })
+
+    });
+
   }
 
   private async isFileExtensionValid(filename: string) {

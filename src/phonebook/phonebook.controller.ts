@@ -45,7 +45,12 @@ export class PhonebookController {
         originalName: file.originalname,
       };
       await this.phonebookService.saveAdminFileInfo(fileInfo);
-      const resp = await this.phonebookService.importCSV(file.path, fileInfo);
+
+      if (fileInfo.originalName && fileInfo.originalName.split('.')[1] === 'xlsx') {
+        await this.phonebookService.importXLSX(file.path, fileInfo);
+      } else
+        await this.phonebookService.importCSV(file.path, fileInfo);
+
       return { error: false, message: 'Uploaded' };
     } catch (error) {
       console.error('An error occured while importing csv file:', error);
