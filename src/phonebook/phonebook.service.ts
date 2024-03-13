@@ -359,6 +359,161 @@ export class PhonebookService {
     });
   }
 
+  
+  private async processXLSFileForUser(inputFilePath, outputFilePath, flaggedFilePath, fileObj) {
+    if (fs.existsSync(inputFilePath)) {
+      let phoneNumberColumnFromXLS = '';
+      let otherColumnsArray = [];
+      let isFirst = true;
+      const rows = [];
+  
+      const workbook = new Excel.Workbook();
+      await workbook.xlsx.readFile(inputFilePath);
+      return new Promise<void>((resolve, reject) => {
+        workbook.worksheets.forEach(async ws => {
+          try {
+            let rows = [];
+      
+            for (var i = 1; i <= ws.rowCount; i++) {
+              let row = {};
+              for (var j = 1; j <= ws.columnCount; j++) {
+                var header = await ws.getRow(1).values[j];
+                var value = await ws.getRow(i).values[j];
+                if (value)
+                  row[header] = String(value);
+                else row[header] = value;
+              }
+      
+              let matchingValue = null;
+      
+              if (isFirst) {
+                for (const key in row) {
+                  if (this.phoneColumns.has(row[key].toLowerCase())) {
+                    phoneNumberColumnFromXLS = row[key];
+                  } else {
+                    otherColumnsArray.push(key);
+                  }
+                }
+                isFirst = false;
+              } else
+                rows[i] = row;
+            }
+      
+            rows = rows.filter(item => item !== undefined);
+            if (rows.length > 0) {
+              const tableName = `temp_table_${Date.now()}`;
+              const columnDefinitions = otherColumnsArray.length > 0 ? otherColumnsArray
+                .map((column) => `${column} VARCHAR(255)`)
+                .join(', ') : [];
+      
+              await this.connection.query(`
+                CREATE TABLE ${tableName} (
+                  id SERIAL PRIMARY KEY,
+                  phoneNumber VARCHAR(255) NOT NULL
+                  ${otherColumnsArray.length > 0 ? ',' : ''}
+                  ${otherColumnsArray.length > 0 ? columnDefinitions : ''}
+                )`);
+      
+              const trimmedOtherColumns = otherColumnsArray.map(column => column.trim());
+      
+              const values = rows
+                .map((entry) => {
+                  const phoneNumberValue = entry[phoneNumberColumnFromXLS];
+                  const otherColumnValues = otherColumnsArray.length > 0 ? trimmedOtherColumns.map((column) => entry[column]) : [];
+      
+                  const allColumnValues = [phoneNumberValue, ...otherColumnValues];
+                  return `('${allColumnValues.join("','")}')`;
+                })
+                .join(',');
+      
+              await this.connection.query(`
+                INSERT INTO ${tableName} (\`phoneNumber\` ${otherColumnsArray.length > 0 ? `, ${trimmedOtherColumns.join(',')}` : ''})
+                VALUES ${values}
+                ON DUPLICATE KEY UPDATE
+                  \`phoneNumber\` = VALUES(\`phoneNumber\`)
+                  ${otherColumnsArray.length > 0 ? ',' : ''}
+                  ${otherColumnsArray.length > 0 ? trimmedOtherColumns.map((column) => `\`${column}\` = VALUES(\`${column}\`)`).join(',') : ''}
+              `);
+      
+              const query = `
+                SELECT temp.phoneNumber  ${otherColumnsArray.length > 0 ? `, temp.${trimmedOtherColumns.join(', temp.')}` : ''}
+                FROM ${tableName} temp
+                LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
+                WHERE main.phoneNumber IS NULL
+              `;
+      
+              const flaggedNumbersQuery = `
+                SELECT temp.phoneNumber ${otherColumnsArray.length > 0 ? `, temp.${trimmedOtherColumns.join(', temp.')}` : ''}
+                FROM ${tableName} temp
+                LEFT JOIN phonebook main ON temp.phoneNumber = main.phoneNumber
+                WHERE main.phoneNumber IS NOT NULL
+              `;
+      
+              const results = await this.connection.query(query);
+              const flaggedNumbers = await this.connection.query(flaggedNumbersQuery);
+      
+              const updatedData = results.map((item) => {
+                const dataObject = {
+                  [phoneNumberColumnFromXLS]: item.phoneNumber,
+                };
+      
+                trimmedOtherColumns.forEach((column) => {
+                  dataObject[column] = item[column];
+                });
+      
+                return dataObject;
+              });
+      
+              const flaggedNumbersArray = flaggedNumbers.map((item) => {
+                const dataObject = {
+                  [phoneNumberColumnFromXLS]: item.phoneNumber,
+                };
+      
+                trimmedOtherColumns.forEach((column) => {
+                  dataObject[column] = item[column];
+                });
+      
+                return dataObject;
+              });
+      
+              fileObj.cleaned = updatedData?.length;
+              fileObj.duplicate = flaggedNumbersArray?.length;
+              fileObj.totalCount = updatedData?.length + flaggedNumbersArray?.length;
+      
+              const newUserSheet = await this.uploadsRepository.create(fileObj);
+              await this.uploadsRepository.save(newUserSheet);
+      
+              if (!newUserSheet) {
+                return { error: true, message: 'Something went wrong.' };
+              }
+      
+              const cleanedFileWorkbook = new Excel.Workbook();
+              const cleanWorksheet = cleanedFileWorkbook.addWorksheet('Sheet1');
+              cleanWorksheet.addRows(updatedData);
+      
+              await workbook.xlsx.writeFile(outputFilePath);
+      
+              const flaggedFileWorkbook = new Excel.Workbook();
+              const flaggedWorksheet = flaggedFileWorkbook.addWorksheet('Sheet1');
+              flaggedWorksheet.addRows(flaggedNumbersArray);
+      
+              await workbook.xlsx.writeFile(flaggedFilePath);
+      
+              resolve();
+            }
+          } catch (error) {
+            reject(error); // Reject the promise if any error occurs
+          }
+        });
+      });
+      
+    } else {
+
+      console.log('File not found.');
+    }
+  }
+  
+
   private async processCSVFileForUser(
     inputFilePath,
     outputFilePath,
@@ -596,13 +751,23 @@ export class PhonebookService {
         '../../uploadedFiles',
         `flagged_${file.filename}`,
       );
-
-      const upload = await this.processCSVFileForUser(
-        inputFilePath,
-        outputFilePath,
-        flaggedFilePath,
-        fileObj,
-      );
+      if (fileObj.originalName && fileObj.originalName.split('.')[1] == 'xlsx') {
+        const upload = await this.processXLSFileForUser(
+          inputFilePath,
+          outputFilePath,
+          flaggedFilePath,
+          fileObj,
+        );
+      }
+      else{
+        const upload = await this.processCSVFileForUser(
+          inputFilePath,
+          outputFilePath,
+          flaggedFilePath,
+          fileObj,
+        );
+      }
+      
 
       return { error: false, message: 'Sheet uploaded.' };
     } catch (error) {
