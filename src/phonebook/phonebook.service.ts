@@ -491,13 +491,13 @@ export class PhonebookService {
               const cleanWorksheet = cleanedFileWorkbook.addWorksheet('Sheet1');
               cleanWorksheet.addRows(updatedData);
       
-              await workbook.xlsx.writeFile(outputFilePath);
+              await cleanedFileWorkbook.xlsx.writeFile(outputFilePath);
       
               const flaggedFileWorkbook = new Excel.Workbook();
               const flaggedWorksheet = flaggedFileWorkbook.addWorksheet('Sheet1');
               flaggedWorksheet.addRows(flaggedNumbersArray);
       
-              await workbook.xlsx.writeFile(flaggedFilePath);
+              await flaggedFileWorkbook.xlsx.writeFile(flaggedFilePath);
       
               resolve();
             }
