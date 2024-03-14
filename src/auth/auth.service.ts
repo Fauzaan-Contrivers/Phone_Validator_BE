@@ -227,13 +227,15 @@ export class AuthService {
     try {
       const filePath = path.join(__dirname, '../../uploadedFiles', `${name}`);
       try {
-        await fs.promises.access(filePath);
+      
+   // Set the appropriate headers for file download
+   res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+   res.setHeader('Content-Type', 'application/octet-stream');
 
-        // Log for debugging
-        console.log('File exists. Proceeding with download:', filePath);
-
-        // File exists, proceed with download
-        res.download(filePath, name);
+   // Stream the file to the response
+   const fileStream = fs.createReadStream(filePath);
+   fileStream.pipe(res);        
+      
       } catch (error) {
         // Log for debugging
         console.error('File does not exist:', error);
