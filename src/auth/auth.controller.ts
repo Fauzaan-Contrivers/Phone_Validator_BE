@@ -6,7 +6,9 @@ import {
   Body,
   Param,
   Post,
+  Put,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
@@ -48,10 +50,20 @@ export class AuthController {
   async createUser(
     @Body('email') email: string,
     @Body('name') name: string,
+    @Body('uploadLimit') uploadLimit: number,
     @Req() request: Request,
   ): Promise<string | { message: string }> {
     const role = request['role'];
-    return await this.authService.createUser(email, name, role);
+    return await this.authService.createUser(email, name, role, uploadLimit);
+  }
+
+  @Put('updateUser/:userId')
+  async updateUser(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body('uploadLimit') uploadLimit: number,
+    @Req() request: Request,
+  ): Promise<string | { message: string }> {
+    return await this.authService.updateUser(userId, uploadLimit);
   }
 
   @Get('all-sheets/:id')

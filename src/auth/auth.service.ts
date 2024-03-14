@@ -157,7 +157,7 @@ export class AuthService {
     }
   }
 
-  async createUser(email: string, name: string, role: string) {
+  async createUser(email: string, name: string, role: string, uploadLimit: number) {
     try {
       if (!email || !name) {
         return {
@@ -177,6 +177,8 @@ export class AuthService {
           email,
           password: null,
           role: 'user',
+          uploadLimit,
+          availableLimit: uploadLimit
         });
 
         const subject = "Set your new password";
@@ -189,6 +191,41 @@ export class AuthService {
           message: 'You are not allowed to perform this action.',
         };
       }
+    } catch (error) {
+      return { error: true, message: error?.message };
+    }
+  }
+
+  async updateUser(userId: number, uploadLimit: number) {
+    try {
+      if (!userId || !uploadLimit) {
+        return {
+          error: true,
+          message: 'All fields are required',
+        };
+      }
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+      });
+      if (!user) {
+        return { error: true, message: 'User does not exists' };
+      }
+
+      if (uploadLimit > user.uploadLimit) {
+        user.availableLimit = user.availableLimit + (uploadLimit - user.uploadLimit);
+      }
+
+      if (uploadLimit < user.uploadLimit) {
+        const temp = user.uploadLimit - uploadLimit;
+        if (user.availableLimit > temp) {
+          user.availableLimit = user.availableLimit - temp;
+        }
+      }
+
+      user.uploadLimit = uploadLimit;
+      await this.userRepository.save(user);
+      return { error: false, message: 'User Updated' };
+
     } catch (error) {
       return { error: true, message: error?.message };
     }
