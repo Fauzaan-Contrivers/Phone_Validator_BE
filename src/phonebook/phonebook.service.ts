@@ -103,7 +103,7 @@ export class PhonebookService {
           row?.[property]?.trim(),
         );
         const phoneNumber: string = row?.[phoneNumberProperty]?.trim();
-        console.log(phoneNumber)
+     //   console.log(phoneNumber)
         if (phoneNumber) {
           if (!uniquePhones.has(phoneNumber)) {
             uniquePhones.add(phoneNumber.trim());
@@ -793,7 +793,7 @@ export class PhonebookService {
                 return reject({ error: true, message: `You have reahced your monthly upload limit. Remaining Available Limit: ${user.availableLimit}` });
               } else {
                 user.availableLimit = user.availableLimit - rows.length;
-                console.log(`new availablelimit ${user.availableLimit}`);
+                //console.log(`new availablelimit ${user.availableLimit}`);
                 await this.userRepository.save(user);
               }
 
